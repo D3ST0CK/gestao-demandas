@@ -1,5 +1,6 @@
 import csv
 import io
+from datetime import datetime
 from decimal import Decimal
 from rest_framework import viewsets
 from rest_framework.decorators import api_view, parser_classes
@@ -101,6 +102,12 @@ def importar_banco_horas(request):
                 horas_float = float(horas_val)
             except ValueError:
                 erros.append(f"Linha {i}: horas '{horas_val}' não é um número válido.")
+                continue
+
+            try:
+                datetime.strptime(data_val, '%Y-%m-%d')
+            except ValueError:
+                erros.append(f"Linha {i}: data '{data_val}' inválida. Use o formato YYYY-MM-DD.")
                 continue
 
             EntradaBancoHoras.objects.create(
