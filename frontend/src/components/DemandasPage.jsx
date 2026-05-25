@@ -31,6 +31,8 @@ export default function DemandasPage() {
   const [filtroAno, setFiltroAno] = useState('')
   const [filtroMes, setFiltroMes] = useState('')
   const [filtroDia, setFiltroDia] = useState('')
+  const [importando, setImportando] = useState(false)
+  const [resultadoImport, setResultadoImport] = useState(null)
 
   function carregar() {
     const params = {}
@@ -38,6 +40,27 @@ export default function DemandasPage() {
     if (filtroMes) params.mes = filtroMes
     if (filtroDia) params.dia = filtroDia
     api.get('/demandas/', { params }).then(r => setDemandas(r.data))
+  }
+
+  async function importarCSV(e) {
+    const arquivo = e.target.files[0]
+    if (!arquivo) return
+    setImportando(true)
+    setResultadoImport(null)
+    const form = new FormData()
+    form.append('arquivo', arquivo)
+    try {
+      const r = await api.post('/demandas/importar/', form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      setResultadoImport(r.data)
+      carregar()
+    } catch {
+      setResultadoImport({ erro: 'Falha ao importar. Verifique o formato do arquivo.' })
+    } finally {
+      setImportando(false)
+      e.target.value = ''
+    }
   }
 
   useEffect(() => { carregar() }, [filtroAno, filtroMes, filtroDia])
@@ -88,11 +111,26 @@ export default function DemandasPage() {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-semibold text-slate-100">Demandas</h2>
-        <button onClick={abrirNova}
-          className="bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
-          + Nova Demanda
-        </button>
+        <div className="flex gap-2 items-center">
+          <label className={`cursor-pointer bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm font-medium px-4 py-2 rounded-lg transition-colors ${importando ? 'opacity-50' : ''}`}>
+            {importando ? 'Importando...' : '⬆ Importar CSV'}
+            <input type="file" accept=".csv" className="hidden" onChange={importarCSV} disabled={importando} />
+          </label>
+          <button onClick={abrirNova}
+            className="bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+            + Nova Demanda
+          </button>
+        </div>
       </div>
+
+      {resultadoImport && (
+        <div className={`mb-4 p-3 rounded-lg text-sm border ${resultadoImport.erro ? 'bg-red-500/10 border-red-500/30 text-red-400' : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'}`}>
+          {resultadoImport.erro
+            ? resultadoImport.erro
+            : `✓ ${resultadoImport.importados} demandas importadas.${resultadoImport.erros?.length ? ` ${resultadoImport.erros.length} linha(s) ignorada(s).` : ''}`
+          }
+        </div>
+      )}
 
       <div className="flex gap-3 mb-4">
         <select value={filtroCategoria} onChange={e => setFiltroCategoria(e.target.value)}
