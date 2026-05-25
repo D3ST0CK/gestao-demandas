@@ -1,6 +1,9 @@
+import csv
+import io
 from decimal import Decimal
 from rest_framework import viewsets
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, parser_classes
+from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
 from django.db.models import Sum
 from .models import EntradaBancoHoras
@@ -62,3 +65,52 @@ def dashboard(request):
         'saldo_banco_horas': float(creditos - debitos),
         'recentes': DemandaSerializer(recentes, many=True).data,
     })
+
+
+@api_view(['POST'])
+@parser_classes([MultiPartParser])
+def importar_banco_horas(request):
+    arquivo = request.FILES.get('arquivo')
+    if not arquivo:
+        return Response({'erro': 'Nenhum arquivo enviado.'}, status=400)
+
+    tipos_validos = {'credito', 'debito'}
+    importados = 0
+    erros = []
+
+    try:
+        conteudo = arquivo.read().decode('utf-8-sig')
+        reader = csv.DictReader(io.StringIO(conteudo))
+        for i, row in enumerate(reader, start=2):
+            data_val = row.get('data', '').strip()
+            horas_val = row.get('horas', '').strip()
+            tipo_val = row.get('tipo', '').strip().lower()
+            descricao = row.get('descricao', '').strip()
+
+            if not data_val:
+                erros.append(f"Linha {i}: campo 'data' vazio.")
+                continue
+            if not horas_val:
+                erros.append(f"Linha {i}: campo 'horas' vazio.")
+                continue
+            if tipo_val not in tipos_validos:
+                erros.append(f"Linha {i}: tipo '{tipo_val}' inválido. Use: credito ou debito.")
+                continue
+
+            try:
+                horas_float = float(horas_val)
+            except ValueError:
+                erros.append(f"Linha {i}: horas '{horas_val}' não é um número válido.")
+                continue
+
+            EntradaBancoHoras.objects.create(
+                data=data_val,
+                horas=horas_float,
+                tipo=tipo_val,
+                descricao=descricao,
+            )
+            importados += 1
+    except Exception as e:
+        return Response({'erro': f'Erro ao processar arquivo: {str(e)}'}, status=400)
+
+    return Response({'importados': importados, 'erros': erros})
