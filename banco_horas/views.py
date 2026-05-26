@@ -44,7 +44,23 @@ class EntradaBancoHorasViewSet(viewsets.ModelViewSet):
 
 @api_view(['GET'])
 def dashboard(request):
+    hoje = date.today()
+
+    data_inicio_str = request.query_params.get('data_inicio')
+    data_fim_str = request.query_params.get('data_fim')
+
+    try:
+        data_inicio = date.fromisoformat(data_inicio_str) if data_inicio_str else None
+        data_fim = date.fromisoformat(data_fim_str) if data_fim_str else None
+    except ValueError:
+        data_inicio = data_fim = None
+
     demandas = Demanda.objects.all()
+    if data_inicio:
+        demandas = demandas.filter(data__gte=data_inicio)
+    if data_fim:
+        demandas = demandas.filter(data__lte=data_fim)
+
     total = demandas.count()
     concluidas_count = demandas.filter(status='concluida').count()
     taxa = round((concluidas_count / total * 100), 1) if total > 0 else 0
@@ -57,25 +73,26 @@ def dashboard(request):
     creditos = EntradaBancoHoras.objects.filter(tipo='credito').aggregate(total=Sum('horas'))['total'] or Decimal('0')
     debitos = EntradaBancoHoras.objects.filter(tipo='debito').aggregate(total=Sum('horas'))['total'] or Decimal('0')
 
-    hoje = date.today()
+    # Demandas por dia — range filtrado ou últimos 30 dias
+    inicio_grafico = data_inicio if data_inicio else (hoje - timedelta(days=29))
+    fim_grafico = data_fim if data_fim else hoje
+    num_dias = (fim_grafico - inicio_grafico).days + 1
 
-    # Demandas por dia — últimos 30 dias
-    inicio_30 = hoje - timedelta(days=29)
     por_dia_qs = {
         str(e['data']): e['total']
-        for e in Demanda.objects.filter(data__gte=inicio_30)
+        for e in Demanda.objects.filter(data__gte=inicio_grafico, data__lte=fim_grafico)
             .values('data').annotate(total=Count('id'))
     }
     por_dia = [
         {
-            'data': str(inicio_30 + timedelta(days=i)),
-            'label': (inicio_30 + timedelta(days=i)).strftime('%d/%m'),
-            'total': por_dia_qs.get(str(inicio_30 + timedelta(days=i)), 0),
+            'data': str(inicio_grafico + timedelta(days=i)),
+            'label': (inicio_grafico + timedelta(days=i)).strftime('%d/%m'),
+            'total': por_dia_qs.get(str(inicio_grafico + timedelta(days=i)), 0),
         }
-        for i in range(30)
+        for i in range(num_dias)
     ]
 
-    # Demandas por semana — últimas 8 semanas
+    # Demandas por semana — últimas 8 semanas (sempre fixo)
     por_semana = []
     for i in range(7, -1, -1):
         fim = hoje - timedelta(weeks=i)

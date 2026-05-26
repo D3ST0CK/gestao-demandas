@@ -140,12 +140,19 @@ export default function DashboardPage() {
   const [data, setData] = useState(null)
   const [erro, setErro] = useState(null)
   const [periodoGrafico, setPeriodoGrafico] = useState('30d')
+  const [dataInicio, setDataInicio] = useState('')
+  const [dataFim, setDataFim] = useState('')
 
-  useEffect(() => {
-    api.get('/dashboard/')
+  function carregar() {
+    const params = {}
+    if (dataInicio) params.data_inicio = dataInicio
+    if (dataFim) params.data_fim = dataFim
+    api.get('/dashboard/', { params })
       .then(r => setData(r.data))
       .catch(() => setErro('Não foi possível carregar o dashboard.'))
-  }, [])
+  }
+
+  useEffect(() => { carregar() }, [dataInicio, dataFim])
 
   if (erro) return <p className="text-red-400">{erro}</p>
   if (!data) return <p className="text-slate-400">Carregando...</p>
@@ -172,15 +179,41 @@ export default function DashboardPage() {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-semibold text-slate-100">Dashboard</h2>
-        <button
-          onClick={() => gerarPDF(data)}
-          className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm font-medium px-4 py-2 rounded-lg transition-colors border border-slate-600"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 17V3"/><path d="m6 11 6 6 6-6"/><rect x="3" y="19" width="18" height="2" rx="1"/>
-          </svg>
-          Exportar PDF
-        </button>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 text-sm text-slate-400">
+            <span>De</span>
+            <input
+              type="date"
+              value={dataInicio}
+              onChange={e => setDataInicio(e.target.value)}
+              className="bg-slate-700 border border-slate-600 text-slate-200 text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:border-blue-500"
+            />
+            <span>até</span>
+            <input
+              type="date"
+              value={dataFim}
+              onChange={e => setDataFim(e.target.value)}
+              className="bg-slate-700 border border-slate-600 text-slate-200 text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:border-blue-500"
+            />
+            {(dataInicio || dataFim) && (
+              <button
+                onClick={() => { setDataInicio(''); setDataFim('') }}
+                className="text-slate-500 hover:text-slate-300 text-xs transition-colors"
+              >
+                Limpar
+              </button>
+            )}
+          </div>
+          <button
+            onClick={() => gerarPDF(data)}
+            className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm font-medium px-4 py-2 rounded-lg transition-colors border border-slate-600"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 17V3"/><path d="m6 11 6 6 6-6"/><rect x="3" y="19" width="18" height="2" rx="1"/>
+            </svg>
+            Exportar PDF
+          </button>
+        </div>
       </div>
 
       {/* Cards — 2 linhas de 3 */}
