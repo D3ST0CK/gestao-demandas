@@ -150,5 +150,4 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', '.railway.app', '.up.railway.app', '.onrender.com']
 
-CORS_ALLOWED_ORIGINS_EXTRA = os.environ.get('CORS_ALLOWED_ORIGINS_EXTRA', '').split(',')
-CORS_ALLOWED_ORIGINS = ['http://localhost:5173'] + [o for o in CORS_ALLOWED_ORIGINS_EXTRA if o]
+CORS_ALLOW_ALL_ORIGINS = True
