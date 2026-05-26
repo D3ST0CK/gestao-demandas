@@ -15,7 +15,11 @@ const STATUS_COLOR = {
 const CATEGORIA_LABEL = { suporte: 'Suporte', tecnico: 'Técnico', rotina: 'Rotina' }
 const STATUS_LABEL = { aberta: 'Aberta', andamento: 'Em andamento', concluida: 'Concluída' }
 
-const EMPTY_FORM = { titulo: '', categoria: 'suporte', status: 'aberta' }
+function hoje() {
+  return new Date().toISOString().slice(0, 10)
+}
+
+const EMPTY_FORM = { titulo: '', categoria: 'suporte', status: 'aberta', data: hoje() }
 
 function inputClass() {
   return 'bg-slate-700 border border-slate-600 text-slate-100 text-sm rounded-lg px-3 py-2 w-full focus:outline-none focus:border-blue-500'
@@ -77,7 +81,7 @@ export default function DemandasPage() {
   }
 
   function abrirEditar(d) {
-    setForm({ titulo: d.titulo, categoria: d.categoria, status: d.status })
+    setForm({ titulo: d.titulo, categoria: d.categoria, status: d.status, data: d.data || hoje() })
     setEditId(d.id)
     setModal(true)
   }
@@ -192,7 +196,7 @@ export default function DemandasPage() {
                   </select>
                 </td>
                 <td className="px-4 py-3 text-slate-400">
-                  {new Date(d.criada_em).toLocaleDateString('pt-BR')}
+                  {d.data ? new Date(d.data + 'T12:00:00').toLocaleDateString('pt-BR') : '—'}
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex gap-2">
@@ -228,6 +232,11 @@ export default function DemandasPage() {
               className={inputClass()}>
               {Object.entries(STATUS_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
             </select>
+          </div>
+          <div>
+            <label className="text-xs text-slate-400 mb-1 block">Data</label>
+            <input type="date" required value={form.data} onChange={e => setForm({ ...form, data: e.target.value })}
+              className={inputClass()} />
           </div>
         </FormModal>
       )}

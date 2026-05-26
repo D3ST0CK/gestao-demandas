@@ -18,11 +18,11 @@ class DemandaViewSet(viewsets.ModelViewSet):
         mes = self.request.query_params.get('mes')
         dia = self.request.query_params.get('dia')
         if ano:
-            qs = qs.filter(criada_em__year=ano)
+            qs = qs.filter(data__year=ano)
         if mes:
-            qs = qs.filter(criada_em__month=mes)
+            qs = qs.filter(data__month=mes)
         if dia:
-            qs = qs.filter(criada_em__day=dia)
+            qs = qs.filter(data__day=dia)
         return qs
 
 
