@@ -149,7 +149,7 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Hosts dinâmicos: aceita qualquer subdomínio Railway + localhost
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '.railway.app', '.up.railway.app']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '.railway.app', '.up.railway.app', '.onrender.com']
 
 # CORS para produção: Railway aceita o domínio Vercel via variável de ambiente
 CORS_ALLOWED_ORIGINS_EXTRA = os.environ.get('CORS_ALLOWED_ORIGINS_EXTRA', '').split(',')
