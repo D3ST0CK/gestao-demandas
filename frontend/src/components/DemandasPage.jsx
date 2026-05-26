@@ -19,7 +19,7 @@ function hoje() {
   return new Date().toISOString().slice(0, 10)
 }
 
-const EMPTY_FORM = { titulo: '', categoria: 'suporte', status: 'aberta', data: hoje() }
+const EMPTY_FORM = { titulo: '', categoria: 'suporte', status: 'aberta', data: hoje(), responsavel: '' }
 
 function inputClass() {
   return 'bg-slate-700 border border-slate-600 text-slate-100 text-sm rounded-lg px-3 py-2 w-full focus:outline-none focus:border-blue-500'
@@ -37,6 +37,21 @@ export default function DemandasPage() {
   const [filtroDia, setFiltroDia] = useState('')
   const [importando, setImportando] = useState(false)
   const [resultadoImport, setResultadoImport] = useState(null)
+  const [setores, setSetores] = useState([])
+  const [pessoas, setPessoas] = useState([])
+  const [setorSelecionado, setSetorSelecionado] = useState('')
+
+  useEffect(() => {
+    api.get('/setores/').then(r => setSetores(r.data))
+  }, [])
+
+  useEffect(() => {
+    if (setorSelecionado) {
+      api.get('/pessoas/', { params: { setor: setorSelecionado } }).then(r => setPessoas(r.data))
+    } else {
+      setPessoas([])
+    }
+  }, [setorSelecionado])
 
   function carregar() {
     const params = {}
@@ -77,11 +92,12 @@ export default function DemandasPage() {
   function abrirNova() {
     setForm(EMPTY_FORM)
     setEditId(null)
+    setSetorSelecionado('')
     setModal(true)
   }
 
   function abrirEditar(d) {
-    setForm({ titulo: d.titulo, categoria: d.categoria, status: d.status, data: d.data || hoje() })
+    setForm({ titulo: d.titulo, categoria: d.categoria, status: d.status, data: d.data || hoje(), responsavel: d.responsavel || '' })
     setEditId(d.id)
     setModal(true)
   }
@@ -172,6 +188,7 @@ export default function DemandasPage() {
               <th className="px-4 py-3 font-medium">Título</th>
               <th className="px-4 py-3 font-medium">Categoria</th>
               <th className="px-4 py-3 font-medium">Status</th>
+              <th className="px-4 py-3 font-medium">Responsável</th>
               <th className="px-4 py-3 font-medium">Data</th>
               <th className="px-4 py-3 font-medium">Ações</th>
             </tr>
@@ -194,6 +211,9 @@ export default function DemandasPage() {
                     className={`text-xs px-2 py-0.5 rounded-full border-0 focus:outline-none cursor-pointer ${STATUS_COLOR[d.status]} bg-transparent`}>
                     {Object.entries(STATUS_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                   </select>
+                </td>
+                <td className="px-4 py-3 text-slate-400 text-sm">
+                  {d.responsavel_nome || '—'}
                 </td>
                 <td className="px-4 py-3 text-slate-400">
                   {d.data ? new Date(d.data + 'T12:00:00').toLocaleDateString('pt-BR') : '—'}
@@ -238,6 +258,24 @@ export default function DemandasPage() {
             <input type="date" required value={form.data} onChange={e => setForm({ ...form, data: e.target.value })}
               className={inputClass()} />
           </div>
+          <div>
+            <label className="text-xs text-slate-400 mb-1 block">Setor do Responsável</label>
+            <select value={setorSelecionado} onChange={e => { setSetorSelecionado(e.target.value); setForm(f => ({ ...f, responsavel: '' })) }}
+              className={inputClass()}>
+              <option value="">Sem responsável</option>
+              {setores.map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}
+            </select>
+          </div>
+          {setorSelecionado && (
+            <div>
+              <label className="text-xs text-slate-400 mb-1 block">Responsável</label>
+              <select value={form.responsavel} onChange={e => setForm(f => ({ ...f, responsavel: e.target.value }))}
+                className={inputClass()}>
+                <option value="">Selecione</option>
+                {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+              </select>
+            </div>
+          )}
         </FormModal>
       )}
     </div>

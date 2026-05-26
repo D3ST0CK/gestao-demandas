@@ -4,6 +4,7 @@ const links = [
   { to: '/', label: 'Dashboard', icon: '📊' },
   { to: '/demandas', label: 'Demandas', icon: '📋' },
   { to: '/banco-horas', label: 'Banco de Horas', icon: '⏱' },
+  { to: '/setores', label: 'Setores', icon: '👥' },
 ]
 
 export default function Sidebar() {

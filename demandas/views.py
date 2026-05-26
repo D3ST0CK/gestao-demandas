@@ -4,8 +4,26 @@ from rest_framework import viewsets
 from rest_framework.decorators import api_view, parser_classes
 from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
-from .models import Demanda
-from .serializers import DemandaSerializer
+from .models import Demanda, Setor, Pessoa
+from .serializers import DemandaSerializer, SetorSerializer, PessoaSerializer
+
+
+class SetorViewSet(viewsets.ModelViewSet):
+    queryset = Setor.objects.all()
+    serializer_class = SetorSerializer
+    http_method_names = ['get', 'post', 'patch', 'delete']
+
+
+class PessoaViewSet(viewsets.ModelViewSet):
+    serializer_class = PessoaSerializer
+    http_method_names = ['get', 'post', 'patch', 'delete']
+
+    def get_queryset(self):
+        qs = Pessoa.objects.all()
+        setor_id = self.request.query_params.get('setor')
+        if setor_id:
+            qs = qs.filter(setor_id=setor_id)
+        return qs
 
 
 class DemandaViewSet(viewsets.ModelViewSet):

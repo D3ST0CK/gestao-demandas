@@ -3,6 +3,7 @@ import Sidebar from './components/Sidebar'
 import DashboardPage from './components/DashboardPage'
 import DemandasPage from './components/DemandasPage'
 import BancoHorasPage from './components/BancoHorasPage'
+import SetoresPage from './components/SetoresPage'
 
 export default function App() {
   return (
@@ -14,6 +15,7 @@ export default function App() {
             <Route path="/" element={<DashboardPage />} />
             <Route path="/demandas" element={<DemandasPage />} />
             <Route path="/banco-horas" element={<BancoHorasPage />} />
+            <Route path="/setores" element={<SetoresPage />} />
           </Routes>
         </main>
       </div>
