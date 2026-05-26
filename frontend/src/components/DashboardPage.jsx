@@ -183,27 +183,30 @@ export default function DashboardPage() {
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-semibold text-slate-100">Dashboard</h2>
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 text-sm text-slate-400">
-            <span>De</span>
+          <div className="flex items-center bg-slate-700 border border-slate-600 rounded-lg px-3 py-1.5 gap-2 text-sm focus-within:border-blue-500 transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-slate-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
             <input
               type="date"
               value={dataInicio}
               onChange={e => setDataInicio(e.target.value)}
-              className="bg-slate-700 border border-slate-600 text-slate-200 text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:border-blue-500"
+              className="bg-transparent text-slate-200 text-sm focus:outline-none w-32"
             />
-            <span>até</span>
+            <span className="text-slate-500">→</span>
             <input
               type="date"
               value={dataFim}
               onChange={e => setDataFim(e.target.value)}
-              className="bg-slate-700 border border-slate-600 text-slate-200 text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:border-blue-500"
+              className="bg-transparent text-slate-200 text-sm focus:outline-none w-32"
             />
             {(dataInicio || dataFim) && (
               <button
                 onClick={() => { setDataInicio(''); setDataFim('') }}
-                className="text-slate-500 hover:text-slate-300 text-xs transition-colors"
+                className="text-slate-500 hover:text-slate-300 transition-colors ml-1"
+                title="Limpar filtro"
               >
-                Limpar
+                ✕
               </button>
             )}
           </div>
