@@ -1,4 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, forwardRef } from 'react'
+import DatePicker from 'react-datepicker'
+import 'react-datepicker/dist/react-datepicker.css'
 import {
   BarChart, Bar, LineChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
@@ -58,6 +60,32 @@ function TooltipPie({ active, payload }) {
     </div>
   )
 }
+
+const DateRangeInput = forwardRef(({ value, onClick, onClear, hasValue }, ref) => (
+  <button
+    type="button"
+    ref={ref}
+    onClick={onClick}
+    className="flex items-center bg-slate-700 border border-slate-600 rounded-lg px-3 py-1.5 gap-2 text-sm hover:border-slate-500 transition-colors"
+  >
+    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-slate-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+    </svg>
+    <span className={hasValue ? 'text-slate-200' : 'text-slate-500'}>
+      {value || 'Selecionar período'}
+    </span>
+    {hasValue && (
+      <span
+        role="button"
+        onClick={e => { e.stopPropagation(); onClear() }}
+        className="text-slate-500 hover:text-slate-300 ml-1 transition-colors"
+      >
+        ✕
+      </span>
+    )}
+  </button>
+))
+DateRangeInput.displayName = 'DateRangeInput'
 
 function gerarPDF(data) {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
@@ -141,24 +169,24 @@ export default function DashboardPage() {
   const [data, setData] = useState(null)
   const [erro, setErro] = useState(null)
   const [periodoGrafico, setPeriodoGrafico] = useState('30d')
-  const [dataInicio, setDataInicio] = useState('')
-  const [dataFim, setDataFim] = useState('')
+  const [dateRange, setDateRange] = useState([null, null])
+  const [startDate, endDate] = dateRange
 
-  function carregar() {
+  function carregar(start, end) {
     const params = {}
-    if (dataInicio) params.data_inicio = dataInicio
-    if (dataFim) params.data_fim = dataFim
+    if (start) params.data_inicio = start.toISOString().slice(0, 10)
+    if (end) params.data_fim = end.toISOString().slice(0, 10)
     api.get('/dashboard/', { params })
       .then(r => setData(r.data))
       .catch(() => setErro('Não foi possível carregar o dashboard.'))
   }
 
-  useEffect(() => { carregar() }, [dataInicio, dataFim])
+  useEffect(() => { carregar(startDate, endDate) }, [startDate, endDate])
 
   if (erro) return <p className="text-red-400">{erro}</p>
   if (!data) return <p className="text-slate-400">Carregando...</p>
 
-  const temFiltro = !!(dataInicio || dataFim)
+  const temFiltro = !!(startDate || endDate)
   const dadosDia = (!temFiltro && periodoGrafico === '7d') ? data.por_dia.slice(-7) : data.por_dia
   const dadosSemana = data.por_semana
 
@@ -183,33 +211,21 @@ export default function DashboardPage() {
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-semibold text-slate-100">Dashboard</h2>
         <div className="flex items-center gap-3">
-          <div className="flex items-center bg-slate-700 border border-slate-600 rounded-lg px-3 py-1.5 gap-2 text-sm focus-within:border-blue-500 transition-colors">
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-slate-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-            </svg>
-            <input
-              type="date"
-              value={dataInicio}
-              onChange={e => setDataInicio(e.target.value)}
-              className="bg-transparent text-slate-200 text-sm focus:outline-none w-32"
-            />
-            <span className="text-slate-500">→</span>
-            <input
-              type="date"
-              value={dataFim}
-              onChange={e => setDataFim(e.target.value)}
-              className="bg-transparent text-slate-200 text-sm focus:outline-none w-32"
-            />
-            {(dataInicio || dataFim) && (
-              <button
-                onClick={() => { setDataInicio(''); setDataFim('') }}
-                className="text-slate-500 hover:text-slate-300 transition-colors ml-1"
-                title="Limpar filtro"
-              >
-                ✕
-              </button>
-            )}
-          </div>
+          <DatePicker
+            selectsRange
+            startDate={startDate}
+            endDate={endDate}
+            onChange={(update) => setDateRange(update)}
+            dateFormat="dd/MM/yyyy"
+            placeholderText="Selecionar período"
+            customInput={
+              <DateRangeInput
+                hasValue={temFiltro}
+                onClear={() => setDateRange([null, null])}
+              />
+            }
+            popperPlacement="bottom-end"
+          />
           <button
             onClick={() => gerarPDF(data)}
             className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm font-medium px-4 py-2 rounded-lg transition-colors border border-slate-600"
