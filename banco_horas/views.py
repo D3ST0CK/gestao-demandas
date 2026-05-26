@@ -1,7 +1,8 @@
 import csv
 import io
-from datetime import datetime
+from datetime import datetime, date, timedelta
 from decimal import Decimal
+from django.db.models import Count
 from rest_framework import viewsets
 from rest_framework.decorators import api_view, parser_classes
 from rest_framework.parsers import MultiPartParser
@@ -56,6 +57,34 @@ def dashboard(request):
     creditos = EntradaBancoHoras.objects.filter(tipo='credito').aggregate(total=Sum('horas'))['total'] or Decimal('0')
     debitos = EntradaBancoHoras.objects.filter(tipo='debito').aggregate(total=Sum('horas'))['total'] or Decimal('0')
 
+    hoje = date.today()
+
+    # Demandas por dia — últimos 30 dias
+    inicio_30 = hoje - timedelta(days=29)
+    por_dia_qs = {
+        str(e['data']): e['total']
+        for e in Demanda.objects.filter(data__gte=inicio_30)
+            .values('data').annotate(total=Count('id'))
+    }
+    por_dia = [
+        {
+            'data': str(inicio_30 + timedelta(days=i)),
+            'label': (inicio_30 + timedelta(days=i)).strftime('%d/%m'),
+            'total': por_dia_qs.get(str(inicio_30 + timedelta(days=i)), 0),
+        }
+        for i in range(30)
+    ]
+
+    # Demandas por semana — últimas 8 semanas
+    por_semana = []
+    for i in range(7, -1, -1):
+        fim = hoje - timedelta(weeks=i)
+        ini = fim - timedelta(days=6)
+        por_semana.append({
+            'label': ini.strftime('%d/%m'),
+            'total': Demanda.objects.filter(data__gte=ini, data__lte=fim).count(),
+        })
+
     return Response({
         'demandas_abertas': demandas.filter(status='aberta').count(),
         'em_andamento': demandas.filter(status='andamento').count(),
@@ -65,6 +94,8 @@ def dashboard(request):
         'por_categoria': por_categoria,
         'saldo_banco_horas': float(creditos - debitos),
         'recentes': DemandaSerializer(recentes, many=True).data,
+        'por_dia': por_dia,
+        'por_semana': por_semana,
     })
 
 
