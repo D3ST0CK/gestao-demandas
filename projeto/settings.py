@@ -143,6 +143,8 @@ DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 DATABASE_URL = os.environ.get('DATABASE_URL')
 if DATABASE_URL:
     DATABASES['default'] = dj_database_url.config(default=DATABASE_URL, conn_max_age=600)
+elif not DEBUG:
+    raise RuntimeError('DATABASE_URL não está configurado. Configure a variável de ambiente no Render.')
 
 MIDDLEWARE.insert(1, 'whitenoise.middleware.WhiteNoiseMiddleware')
 STATIC_ROOT = BASE_DIR / 'staticfiles'
