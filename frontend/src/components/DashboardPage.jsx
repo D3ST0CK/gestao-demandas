@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import {
   BarChart, Bar, LineChart, Line,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
+  ReferenceLine, LabelList, PieChart, Pie, Legend,
 } from 'recharts'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
@@ -47,6 +48,17 @@ function TooltipCustom({ active, payload, label }) {
   )
 }
 
+function TooltipPie({ active, payload }) {
+  if (!active || !payload?.length) return null
+  const { name, value, payload: p } = payload[0]
+  return (
+    <div className="bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-xs text-slate-200 shadow-lg">
+      <p className="font-semibold" style={{ color: p.cor }}>{name}</p>
+      <p className="text-slate-300">{value} ({p.pct}%)</p>
+    </div>
+  )
+}
+
 function gerarPDF(data) {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
   const dataGeracao = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
@@ -66,13 +78,16 @@ function gerarPDF(data) {
   doc.setFont('helvetica', 'bold')
   doc.text('Resumo Executivo', 14, 40)
   const total = data.total || 0
+  const mediaPorDia = (data.por_dia.reduce((s, d) => s + d.total, 0) / 30).toFixed(1)
   autoTable(doc, {
     startY: 44,
     head: [['Indicador', 'Valor']],
     body: [
+      ['Total de Demandas', String(total)],
       ['Demandas Abertas', String(data.demandas_abertas)],
       ['Em Andamento', String(data.em_andamento)],
       [`Concluídas (${data.taxa_conclusao}% de ${total})`, String(data.concluidas)],
+      ['Média por dia (30d)', `${mediaPorDia}/dia`],
       ['Saldo Banco de Horas', formatarSaldo(data.saldo_banco_horas)],
     ],
     styles: { fontSize: 10, cellPadding: 4 },
@@ -138,11 +153,20 @@ export default function DashboardPage() {
   const dadosDia = periodoGrafico === '7d' ? data.por_dia.slice(-7) : data.por_dia
   const dadosSemana = data.por_semana
 
+  const mediaPorDia = (data.por_dia.reduce((s, d) => s + d.total, 0) / 30).toFixed(1)
+
   const dadosCategoria = Object.entries(data.por_categoria).map(([cat, total]) => ({
     name: CATEGORIA_LABEL[cat],
     total,
     cor: CATEGORIA_BAR_COLOR[cat],
   }))
+
+  const total = data.total || 0
+  const dadosStatus = [
+    { name: 'Abertas', value: data.demandas_abertas, cor: '#3b82f6', pct: total > 0 ? Math.round(data.demandas_abertas / total * 100) : 0 },
+    { name: 'Em andamento', value: data.em_andamento, cor: '#f59e0b', pct: total > 0 ? Math.round(data.em_andamento / total * 100) : 0 },
+    { name: 'Concluídas', value: data.concluidas, cor: '#8b5cf6', pct: total > 0 ? Math.round(data.concluidas / total * 100) : 0 },
+  ]
 
   return (
     <div>
@@ -159,22 +183,36 @@ export default function DashboardPage() {
         </button>
       </div>
 
-      {/* Cards */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      {/* Cards — 2 linhas de 3 */}
+      <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="bg-slate-800 rounded-xl p-5 border border-slate-700">
+          <p className="text-3xl font-bold text-slate-100">{total}</p>
+          <p className="text-sm text-slate-400 mt-1">Total de demandas</p>
+        </div>
         <div className="bg-slate-800 rounded-xl p-5 border border-slate-700">
           <p className="text-3xl font-bold text-emerald-400">{data.demandas_abertas}</p>
-          <p className="text-sm text-slate-400 mt-1">Abertas</p>
+          <p className="text-sm text-slate-400 mt-1">
+            Abertas
+            {total > 0 && <span className="ml-2 text-xs text-slate-500">{Math.round(data.demandas_abertas / total * 100)}%</span>}
+          </p>
         </div>
         <div className="bg-slate-800 rounded-xl p-5 border border-slate-700">
           <p className="text-3xl font-bold text-amber-400">{data.em_andamento}</p>
-          <p className="text-sm text-slate-400 mt-1">Em andamento</p>
+          <p className="text-sm text-slate-400 mt-1">
+            Em andamento
+            {total > 0 && <span className="ml-2 text-xs text-slate-500">{Math.round(data.em_andamento / total * 100)}%</span>}
+          </p>
         </div>
         <div className="bg-slate-800 rounded-xl p-5 border border-slate-700">
           <p className="text-3xl font-bold text-violet-400">{data.concluidas}</p>
           <p className="text-sm text-slate-400 mt-1">
             Concluídas
-            {data.total > 0 && <span className="ml-2 text-xs text-slate-500">{data.taxa_conclusao}%</span>}
+            {total > 0 && <span className="ml-2 text-xs text-slate-500">{data.taxa_conclusao}%</span>}
           </p>
+        </div>
+        <div className="bg-slate-800 rounded-xl p-5 border border-slate-700">
+          <p className="text-3xl font-bold text-blue-400">{mediaPorDia}<span className="text-base font-normal text-slate-500 ml-1">/dia</span></p>
+          <p className="text-sm text-slate-400 mt-1">Média — últimos 30 dias</p>
         </div>
         <div className="bg-slate-800 rounded-xl p-5 border border-slate-700">
           <p className="text-3xl font-bold"><SaldoHoras saldo={data.saldo_banco_horas} /></p>
@@ -182,7 +220,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Gráfico de barras por dia */}
+      {/* Gráfico de barras por dia com linha de média */}
       <div className="bg-slate-800 rounded-xl border border-slate-700 p-5 mb-6">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-sm font-medium text-slate-300">Demandas por dia</h3>
@@ -202,12 +240,18 @@ export default function DashboardPage() {
               interval={periodoGrafico === '30d' ? 4 : 0} />
             <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
             <Tooltip content={<TooltipCustom />} cursor={{ fill: '#1e293b' }} />
+            <ReferenceLine
+              y={parseFloat(mediaPorDia)}
+              stroke="#64748b"
+              strokeDasharray="4 4"
+              label={{ value: `Média: ${mediaPorDia}`, fill: '#94a3b8', fontSize: 11, position: 'insideTopRight' }}
+            />
             <Bar dataKey="total" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={32} />
           </BarChart>
         </ResponsiveContainer>
       </div>
 
-      {/* Gráfico de linha por semana + por categoria */}
+      {/* Linha por semana + Pizza de status */}
       <div className="grid grid-cols-2 gap-6 mb-6">
         <div className="bg-slate-800 rounded-xl border border-slate-700 p-5">
           <h3 className="text-sm font-medium text-slate-300 mb-4">Demandas por semana (últimas 8)</h3>
@@ -224,21 +268,59 @@ export default function DashboardPage() {
         </div>
 
         <div className="bg-slate-800 rounded-xl border border-slate-700 p-5">
-          <h3 className="text-sm font-medium text-slate-300 mb-4">Por categoria</h3>
-          <ResponsiveContainer width="100%" height={180}>
-            <BarChart data={dadosCategoria} layout="vertical" margin={{ top: 0, right: 10, left: 10, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#334155" horizontal={false} />
-              <XAxis type="number" tick={{ fill: '#94a3b8', fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
-              <YAxis type="category" dataKey="name" tick={{ fill: '#94a3b8', fontSize: 12 }} axisLine={false} tickLine={false} width={60} />
-              <Tooltip content={<TooltipCustom />} cursor={{ fill: '#1e293b' }} />
-              <Bar dataKey="total" radius={[0, 4, 4, 0]} maxBarSize={28}>
-                {dadosCategoria.map((entry, i) => (
-                  <Cell key={i} fill={entry.cor} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+          <h3 className="text-sm font-medium text-slate-300 mb-2">Distribuição por status</h3>
+          {total === 0 ? (
+            <p className="text-slate-500 text-sm mt-8 text-center">Nenhuma demanda ainda.</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={180}>
+              <PieChart>
+                <Pie
+                  data={dadosStatus}
+                  cx="50%"
+                  cy="45%"
+                  innerRadius={45}
+                  outerRadius={72}
+                  dataKey="value"
+                  paddingAngle={3}
+                >
+                  {dadosStatus.map((entry, i) => (
+                    <Cell key={i} fill={entry.cor} />
+                  ))}
+                </Pie>
+                <Tooltip content={<TooltipPie />} />
+                <Legend
+                  iconType="circle"
+                  iconSize={8}
+                  formatter={(value) => <span style={{ color: '#94a3b8', fontSize: 11 }}>{value}</span>}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          )}
         </div>
+      </div>
+
+      {/* Por categoria com % */}
+      <div className="bg-slate-800 rounded-xl border border-slate-700 p-5 mb-6">
+        <h3 className="text-sm font-medium text-slate-300 mb-4">Por categoria</h3>
+        <ResponsiveContainer width="100%" height={140}>
+          <BarChart data={dadosCategoria} layout="vertical" margin={{ top: 0, right: 50, left: 10, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#334155" horizontal={false} />
+            <XAxis type="number" tick={{ fill: '#94a3b8', fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
+            <YAxis type="category" dataKey="name" tick={{ fill: '#94a3b8', fontSize: 12 }} axisLine={false} tickLine={false} width={60} />
+            <Tooltip content={<TooltipCustom />} cursor={{ fill: '#1e293b' }} />
+            <Bar dataKey="total" radius={[0, 4, 4, 0]} maxBarSize={28}>
+              {dadosCategoria.map((entry, i) => (
+                <Cell key={i} fill={entry.cor} />
+              ))}
+              <LabelList
+                dataKey="total"
+                position="right"
+                formatter={(v) => total > 0 ? `${Math.round(v / total * 100)}%` : ''}
+                style={{ fill: '#94a3b8', fontSize: 11 }}
+              />
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
       </div>
 
       {/* Demandas recentes */}
