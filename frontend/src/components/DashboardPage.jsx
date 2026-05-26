@@ -78,7 +78,8 @@ function gerarPDF(data) {
   doc.setFont('helvetica', 'bold')
   doc.text('Resumo Executivo', 14, 40)
   const total = data.total || 0
-  const mediaPorDia = (data.por_dia.reduce((s, d) => s + d.total, 0) / 30).toFixed(1)
+  const numDiasPDF = data.por_dia.length || 1
+  const mediaPorDia = (data.por_dia.reduce((s, d) => s + d.total, 0) / numDiasPDF).toFixed(1)
   autoTable(doc, {
     startY: 44,
     head: [['Indicador', 'Valor']],
@@ -157,10 +158,12 @@ export default function DashboardPage() {
   if (erro) return <p className="text-red-400">{erro}</p>
   if (!data) return <p className="text-slate-400">Carregando...</p>
 
-  const dadosDia = periodoGrafico === '7d' ? data.por_dia.slice(-7) : data.por_dia
+  const temFiltro = !!(dataInicio || dataFim)
+  const dadosDia = (!temFiltro && periodoGrafico === '7d') ? data.por_dia.slice(-7) : data.por_dia
   const dadosSemana = data.por_semana
 
-  const mediaPorDia = (data.por_dia.reduce((s, d) => s + d.total, 0) / 30).toFixed(1)
+  const numDias = data.por_dia.length || 1
+  const mediaPorDia = (data.por_dia.reduce((s, d) => s + d.total, 0) / numDias).toFixed(1)
 
   const dadosCategoria = Object.entries(data.por_categoria).map(([cat, total]) => ({
     name: CATEGORIA_LABEL[cat],
@@ -245,7 +248,7 @@ export default function DashboardPage() {
         </div>
         <div className="bg-slate-800 rounded-xl p-5 border border-slate-700">
           <p className="text-3xl font-bold text-blue-400">{mediaPorDia}<span className="text-base font-normal text-slate-500 ml-1">/dia</span></p>
-          <p className="text-sm text-slate-400 mt-1">Média — últimos 30 dias</p>
+          <p className="text-sm text-slate-400 mt-1">Média — {temFiltro ? 'período filtrado' : 'últimos 30 dias'}</p>
         </div>
         <div className="bg-slate-800 rounded-xl p-5 border border-slate-700">
           <p className="text-3xl font-bold"><SaldoHoras saldo={data.saldo_banco_horas} /></p>
@@ -257,14 +260,16 @@ export default function DashboardPage() {
       <div className="bg-slate-800 rounded-xl border border-slate-700 p-5 mb-6">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-sm font-medium text-slate-300">Demandas por dia</h3>
-          <div className="flex gap-1">
-            {['7d', '30d'].map(p => (
-              <button key={p} onClick={() => setPeriodoGrafico(p)}
-                className={`text-xs px-3 py-1 rounded-md transition-colors ${periodoGrafico === p ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'}`}>
-                {p === '7d' ? '7 dias' : '30 dias'}
-              </button>
-            ))}
-          </div>
+          {!temFiltro && (
+            <div className="flex gap-1">
+              {['7d', '30d'].map(p => (
+                <button key={p} onClick={() => setPeriodoGrafico(p)}
+                  className={`text-xs px-3 py-1 rounded-md transition-colors ${periodoGrafico === p ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'}`}>
+                  {p === '7d' ? '7 dias' : '30 dias'}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
         <ResponsiveContainer width="100%" height={200}>
           <BarChart data={dadosDia} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
@@ -287,7 +292,7 @@ export default function DashboardPage() {
       {/* Linha por semana + Pizza de status */}
       <div className="grid grid-cols-2 gap-6 mb-6">
         <div className="bg-slate-800 rounded-xl border border-slate-700 p-5">
-          <h3 className="text-sm font-medium text-slate-300 mb-4">Demandas por semana (últimas 8)</h3>
+          <h3 className="text-sm font-medium text-slate-300 mb-4">{temFiltro ? 'Demandas por semana (período)' : 'Demandas por semana (últimas 8)'}</h3>
           <ResponsiveContainer width="100%" height={180}>
             <LineChart data={dadosSemana} margin={{ top: 0, right: 10, left: -20, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />

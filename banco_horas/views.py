@@ -92,15 +92,26 @@ def dashboard(request):
         for i in range(num_dias)
     ]
 
-    # Demandas por semana — últimas 8 semanas (sempre fixo)
-    por_semana = []
-    for i in range(7, -1, -1):
-        fim = hoje - timedelta(weeks=i)
-        ini = fim - timedelta(days=6)
-        por_semana.append({
-            'label': ini.strftime('%d/%m'),
-            'total': Demanda.objects.filter(data__gte=ini, data__lte=fim).count(),
-        })
+    # Demandas por semana — reativo ao filtro quando ativo, últimas 8 semanas quando livre
+    if data_inicio or data_fim:
+        por_semana = []
+        cursor = inicio_grafico
+        while cursor <= fim_grafico:
+            fim_w = min(cursor + timedelta(days=6), fim_grafico)
+            por_semana.append({
+                'label': cursor.strftime('%d/%m'),
+                'total': Demanda.objects.filter(data__gte=cursor, data__lte=fim_w).count(),
+            })
+            cursor += timedelta(days=7)
+    else:
+        por_semana = []
+        for i in range(7, -1, -1):
+            fim = hoje - timedelta(weeks=i)
+            ini = fim - timedelta(days=6)
+            por_semana.append({
+                'label': ini.strftime('%d/%m'),
+                'total': Demanda.objects.filter(data__gte=ini, data__lte=fim).count(),
+            })
 
     return Response({
         'demandas_abertas': demandas.filter(status='aberta').count(),
