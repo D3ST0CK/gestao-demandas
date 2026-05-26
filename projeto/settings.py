@@ -138,19 +138,17 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 import os
 import dj_database_url
 
-# Lê DATABASE_URL do ambiente (Railway injeta automaticamente)
+DEBUG = os.environ.get('DEBUG', 'True') == 'True'
+
 DATABASE_URL = os.environ.get('DATABASE_URL')
 if DATABASE_URL:
     DATABASES['default'] = dj_database_url.config(default=DATABASE_URL, conn_max_age=600)
 
-# Whitenoise para servir arquivos estáticos
 MIDDLEWARE.insert(1, 'whitenoise.middleware.WhiteNoiseMiddleware')
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# Hosts dinâmicos: aceita qualquer subdomínio Railway + localhost
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', '.railway.app', '.up.railway.app', '.onrender.com']
 
-# CORS para produção: Railway aceita o domínio Vercel via variável de ambiente
 CORS_ALLOWED_ORIGINS_EXTRA = os.environ.get('CORS_ALLOWED_ORIGINS_EXTRA', '').split(',')
 CORS_ALLOWED_ORIGINS = ['http://localhost:5173'] + [o for o in CORS_ALLOWED_ORIGINS_EXTRA if o]
