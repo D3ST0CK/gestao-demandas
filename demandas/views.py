@@ -2,7 +2,7 @@ import csv
 import io
 import json
 from datetime import date
-from google import genai as google_genai
+from groq import Groq
 from django.conf import settings
 from rest_framework import viewsets
 from rest_framework.decorators import action, api_view, parser_classes
@@ -55,7 +55,7 @@ class DemandaViewSet(viewsets.ModelViewSet):
 
         pessoas = list(Pessoa.objects.values('id', 'nome'))
 
-        client = google_genai.Client(api_key=settings.GEMINI_API_KEY)
+        client = Groq(api_key=settings.GROQ_API_KEY)
 
         user_msg = f"""Extraia as informações do texto abaixo e retorne um JSON com estes campos:
 - titulo: string descritiva da tarefa
@@ -71,13 +71,14 @@ Retorne APENAS o JSON, sem markdown ou explicações.
 
 Texto: {texto}"""
 
-        resposta = client.models.generate_content(
-            model='gemini-2.0-flash',
-            contents=user_msg,
+        resposta = client.chat.completions.create(
+            model='llama-3.1-8b-instant',
+            messages=[{'role': 'user', 'content': user_msg}],
+            max_tokens=300,
         )
 
         try:
-            texto_resposta = resposta.text.strip()
+            texto_resposta = resposta.choices[0].message.content.strip()
             if texto_resposta.startswith('```'):
                 texto_resposta = texto_resposta.split('```')[1]
                 if texto_resposta.startswith('json'):

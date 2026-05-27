@@ -154,4 +154,4 @@ ALLOWED_HOSTS = ['localhost', '127.0.0.1', '.railway.app', '.up.railway.app', '.
 
 CORS_ALLOW_ALL_ORIGINS = True
 
-GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
+GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')
