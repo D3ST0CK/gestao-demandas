@@ -40,6 +40,10 @@ export default function DemandasPage() {
   const [setores, setSetores] = useState([])
   const [pessoas, setPessoas] = useState([])
   const [setorSelecionado, setSetorSelecionado] = useState('')
+  const [textoIA, setTextoIA] = useState('')
+  const [previewIA, setPreviewIA] = useState(null)
+  const [loadingIA, setLoadingIA] = useState(false)
+  const [erroIA, setErroIA] = useState('')
 
   useEffect(() => {
     api.get('/setores/').then(r => setSetores(r.data))
@@ -119,6 +123,29 @@ export default function DemandasPage() {
     carregar()
   }
 
+  async function analisarTexto() {
+    if (!textoIA.trim()) return
+    setLoadingIA(true)
+    setErroIA('')
+    setPreviewIA(null)
+    try {
+      const r = await api.post('/demandas/ia/', { texto: textoIA })
+      setPreviewIA(r.data)
+    } catch (e) {
+      setErroIA(e.response?.data?.error || 'Erro ao analisar o texto.')
+    } finally {
+      setLoadingIA(false)
+    }
+  }
+
+  async function confirmarIA() {
+    const { responsavel_nome, ...payload } = previewIA
+    await api.post('/demandas/', payload)
+    setPreviewIA(null)
+    setTextoIA('')
+    carregar()
+  }
+
   async function alterarStatus(d, novoStatus) {
     await api.patch(`/demandas/${d.id}/`, {
       status: novoStatus,
@@ -141,6 +168,54 @@ export default function DemandasPage() {
             + Nova Demanda
           </button>
         </div>
+      </div>
+
+      <div className="bg-slate-800 rounded-xl p-4 mb-6 border border-slate-700">
+        <p className="text-xs text-slate-400 mb-2 font-medium uppercase tracking-wide">Criar com IA</p>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={textoIA}
+            onChange={e => setTextoIA(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && !loadingIA && analisarTexto()}
+            placeholder="Ex: Relatório de vendas pro financeiro, responsável João, entrega sexta"
+            className="flex-1 bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500"
+          />
+          <button
+            onClick={analisarTexto}
+            disabled={loadingIA || !textoIA.trim()}
+            className="bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-sm px-4 py-2 rounded-lg transition-colors"
+          >
+            {loadingIA ? 'Analisando…' : 'Analisar'}
+          </button>
+        </div>
+
+        {erroIA && <p className="text-red-400 text-xs mt-2">{erroIA}</p>}
+
+        {previewIA && (
+          <div className="mt-3 bg-slate-700 rounded-lg p-3 flex items-start justify-between gap-4">
+            <div className="text-sm space-y-0.5">
+              <p className="text-slate-200 font-medium">{previewIA.titulo}</p>
+              <p className="text-slate-400 text-xs capitalize">
+                {previewIA.categoria} · {previewIA.data} · {previewIA.responsavel_nome || 'Sem responsável'}
+              </p>
+            </div>
+            <div className="flex gap-2 shrink-0">
+              <button
+                onClick={() => setPreviewIA(null)}
+                className="text-slate-400 hover:text-slate-200 text-xs px-3 py-1.5 rounded-lg border border-slate-600 hover:border-slate-500 transition-colors"
+              >
+                Corrigir
+              </button>
+              <button
+                onClick={confirmarIA}
+                className="bg-green-600 hover:bg-green-500 text-white text-xs px-3 py-1.5 rounded-lg transition-colors"
+              >
+                Confirmar
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {resultadoImport && (

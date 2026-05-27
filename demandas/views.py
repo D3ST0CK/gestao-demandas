@@ -1,7 +1,11 @@
 import csv
 import io
+import json
+from datetime import date
+from anthropic import Anthropic
+from django.conf import settings
 from rest_framework import viewsets
-from rest_framework.decorators import api_view, parser_classes
+from rest_framework.decorators import action, api_view, parser_classes
 from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
 from .models import Demanda, Setor, Pessoa
@@ -42,6 +46,45 @@ class DemandaViewSet(viewsets.ModelViewSet):
         if dia:
             qs = qs.filter(data__day=dia)
         return qs
+
+    @action(detail=False, methods=['post'])
+    def ia(self, request):
+        texto = request.data.get('texto', '').strip()
+        if not texto:
+            return Response({'error': 'Texto obrigatório'}, status=400)
+
+        pessoas = list(Pessoa.objects.values('id', 'nome'))
+
+        client = Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+
+        user_msg = f"""Extraia as informações do texto abaixo e retorne um JSON com estes campos:
+- titulo: string descritiva da tarefa
+- categoria: "suporte", "tecnico" ou "rotina" (escolha a mais adequada)
+- status: "aberta"
+- data: data no formato YYYY-MM-DD (hoje = {date.today().isoformat()} se não mencionado)
+- responsavel: id numérico da pessoa (ou null se não mencionado)
+- responsavel_nome: nome da pessoa (ou null)
+
+Pessoas disponíveis: {json.dumps(pessoas, ensure_ascii=False)}
+
+Retorne APENAS o JSON, sem markdown ou explicações.
+
+Texto: {texto}"""
+
+        msg = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=300,
+            messages=[{"role": "user", "content": user_msg}]
+        )
+
+        try:
+            resultado = json.loads(msg.content[0].text)
+            return Response(resultado)
+        except json.JSONDecodeError:
+            return Response(
+                {'error': 'Não foi possível interpretar o texto. Tente ser mais específico.'},
+                status=422
+            )
 
 
 CATEGORIA_MAP = {

@@ -153,3 +153,5 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', '.railway.app', '.up.railway.app', '.onrender.com']
 
 CORS_ALLOW_ALL_ORIGINS = True
+
+ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY', '')
