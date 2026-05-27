@@ -91,6 +91,49 @@ Texto: {texto}"""
                 status=422
             )
 
+    @action(detail=False, methods=['get'])
+    def briefing(self, request):
+        from decimal import Decimal
+        from banco_horas.models import EntradaBancoHoras
+        from django.db.models import Sum
+
+        hoje = date.today()
+
+        abertas = Demanda.objects.filter(status='aberta')
+        em_andamento = Demanda.objects.filter(status='andamento')
+        vencidas = Demanda.objects.filter(data__lt=hoje).exclude(status='concluida')
+
+        creditos = EntradaBancoHoras.objects.filter(tipo='credito').aggregate(total=Sum('horas'))['total'] or Decimal('0')
+        debitos = EntradaBancoHoras.objects.filter(tipo='debito').aggregate(total=Sum('horas'))['total'] or Decimal('0')
+        saldo = float(creditos - debitos)
+        saldo_h = int(abs(saldo))
+        saldo_min = round((abs(saldo) - saldo_h) * 60)
+        saldo_str = f"{'+'  if saldo >= 0 else '-'}{saldo_h}h{f'{saldo_min}min' if saldo_min else ''}"
+
+        vencidas_titulos = list(vencidas.values_list('titulo', flat=True)[:3])
+
+        prompt = f"""Você é um assistente de produtividade. Gere um briefing curto (2-3 frases) em português sobre o dia de trabalho com base nos dados abaixo. Seja direto e objetivo.
+
+Dados:
+- Demandas abertas: {abertas.count()}
+- Demandas em andamento: {em_andamento.count()}
+- Demandas vencidas (data passada, não concluídas): {vencidas.count()}{f" — títulos: {', '.join(repr(t) for t in vencidas_titulos)}" if vencidas_titulos else ''}
+- Saldo banco de horas: {saldo_str}
+- Data de hoje: {hoje.strftime('%d/%m/%Y')}
+
+Retorne apenas o texto do briefing, sem markdown."""
+
+        client = Groq(api_key=settings.GROQ_API_KEY)
+        resposta = client.chat.completions.create(
+            model='llama-3.1-8b-instant',
+            messages=[{'role': 'user', 'content': prompt}],
+            max_tokens=200,
+        )
+        return Response({
+            'texto': resposta.choices[0].message.content.strip(),
+            'gerado_em': hoje.isoformat(),
+        })
+
 
 CATEGORIA_MAP = {
     'suporte': 'suporte', 'support': 'suporte',

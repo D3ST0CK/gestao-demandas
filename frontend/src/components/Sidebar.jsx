@@ -7,7 +7,7 @@ const links = [
   { to: '/setores', label: 'Setores', icon: '👥' },
 ]
 
-export default function Sidebar() {
+export default function Sidebar({ onLogout }) {
   return (
     <aside className="w-52 min-h-screen bg-slate-900 border-r border-slate-700 flex flex-col">
       <div className="px-5 py-5 border-b border-slate-700">
@@ -32,12 +32,18 @@ export default function Sidebar() {
           </NavLink>
         ))}
       </nav>
-      <div className="px-5 py-3 border-t border-slate-700">
+      <div className="px-5 py-3 border-t border-slate-700 flex flex-col gap-2">
         <button
           onClick={() => window.open('/demandas', '_self')}
           className="w-full bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium py-2 px-3 rounded-md transition-colors"
         >
           + Nova Demanda
+        </button>
+        <button
+          onClick={onLogout}
+          className="w-full bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm font-medium py-2 px-3 rounded-md transition-colors"
+        >
+          Sair
         </button>
       </div>
     </aside>

@@ -171,6 +171,27 @@ export default function DashboardPage() {
   const [periodoGrafico, setPeriodoGrafico] = useState('30d')
   const [dateRange, setDateRange] = useState([null, null])
   const [startDate, endDate] = dateRange
+  const [briefing, setBriefing] = useState(() => {
+    try {
+      const cached = JSON.parse(localStorage.getItem('briefing_cache') || 'null')
+      if (cached && cached.gerado_em === new Date().toISOString().slice(0, 10)) return cached
+    } catch {}
+    return null
+  })
+  const [briefingLoading, setBriefingLoading] = useState(false)
+
+  function carregarBriefing() {
+    setBriefingLoading(true)
+    api.get('/demandas/briefing/')
+      .then(r => {
+        setBriefing(r.data)
+        localStorage.setItem('briefing_cache', JSON.stringify(r.data))
+      })
+      .catch(() => {})
+      .finally(() => setBriefingLoading(false))
+  }
+
+  useEffect(() => { if (!briefing) carregarBriefing() }, [])
 
   function carregar(start, end) {
     const params = {}
@@ -208,6 +229,27 @@ export default function DashboardPage() {
 
   return (
     <div>
+      <div className="bg-slate-800 border border-slate-700 rounded-xl p-4 mb-5 flex items-start gap-3">
+        <div className="text-blue-400 mt-0.5 shrink-0">
+          <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>
+          </svg>
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs text-slate-500 mb-1 font-medium uppercase tracking-wide">Briefing do dia</p>
+          {briefingLoading ? (
+            <p className="text-sm text-slate-400">Gerando briefing...</p>
+          ) : briefing ? (
+            <p className="text-sm text-slate-300 leading-relaxed">{briefing.texto}</p>
+          ) : (
+            <p className="text-sm text-slate-500">Clique em Atualizar para gerar o briefing.</p>
+          )}
+        </div>
+        <button onClick={carregarBriefing} disabled={briefingLoading}
+          className="shrink-0 text-xs text-slate-400 hover:text-slate-200 bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40">
+          Atualizar
+        </button>
+      </div>
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-semibold text-slate-100">Dashboard</h2>
         <div className="flex items-center gap-3">
@@ -269,7 +311,7 @@ export default function DashboardPage() {
           <p className="text-3xl font-bold text-blue-400">{mediaPorDia}<span className="text-base font-normal text-slate-500 ml-1">/dia</span></p>
           <p className="text-sm text-slate-400 mt-1">Média — {temFiltro ? 'período filtrado' : 'últimos 30 dias'}</p>
         </div>
-        <div className="bg-slate-800 rounded-xl p-5 border border-slate-700">
+        <div className="bg-slate-800 rounded-xl p-5 border bordeslate-700">
           <p className="text-3xl font-bold"><SaldoHoras saldo={data.saldo_banco_horas} /></p>
           <p className="text-sm text-slate-400 mt-1">Banco de horas</p>
         </div>

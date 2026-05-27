@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'demandas',
     'banco_horas',
+    'rest_framework.authtoken',
 ]
 
 MIDDLEWARE = [
@@ -59,8 +60,12 @@ CORS_ALLOWED_ORIGINS = [
 ]
 
 REST_FRAMEWORK = {
-    'DEFAULT_PERMISSION_CLASSES': [],
-    'DEFAULT_AUTHENTICATION_CLASSES': [],
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
 }
 
 ROOT_URLCONF = 'projeto.urls'
