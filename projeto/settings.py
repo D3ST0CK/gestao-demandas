@@ -154,4 +154,4 @@ ALLOWED_HOSTS = ['localhost', '127.0.0.1', '.railway.app', '.up.railway.app', '.
 
 CORS_ALLOW_ALL_ORIGINS = True
 
-ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY', '')
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')

@@ -2,7 +2,7 @@ import csv
 import io
 import json
 from datetime import date
-from anthropic import Anthropic
+import google.generativeai as genai
 from django.conf import settings
 from rest_framework import viewsets
 from rest_framework.decorators import action, api_view, parser_classes
@@ -55,7 +55,8 @@ class DemandaViewSet(viewsets.ModelViewSet):
 
         pessoas = list(Pessoa.objects.values('id', 'nome'))
 
-        client = Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+        genai.configure(api_key=settings.GEMINI_API_KEY)
+        model = genai.GenerativeModel('gemini-1.5-flash')
 
         user_msg = f"""Extraia as informações do texto abaixo e retorne um JSON com estes campos:
 - titulo: string descritiva da tarefa
@@ -71,14 +72,15 @@ Retorne APENAS o JSON, sem markdown ou explicações.
 
 Texto: {texto}"""
 
-        msg = client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=300,
-            messages=[{"role": "user", "content": user_msg}]
-        )
+        resposta = model.generate_content(user_msg)
 
         try:
-            resultado = json.loads(msg.content[0].text)
+            texto_resposta = resposta.text.strip()
+            if texto_resposta.startswith('```'):
+                texto_resposta = texto_resposta.split('```')[1]
+                if texto_resposta.startswith('json'):
+                    texto_resposta = texto_resposta[4:]
+            resultado = json.loads(texto_resposta)
             return Response(resultado)
         except json.JSONDecodeError:
             return Response(
