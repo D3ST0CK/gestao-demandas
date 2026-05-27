@@ -2,7 +2,7 @@ import csv
 import io
 import json
 from datetime import date
-import google.generativeai as genai
+from google import genai as google_genai
 from django.conf import settings
 from rest_framework import viewsets
 from rest_framework.decorators import action, api_view, parser_classes
@@ -55,8 +55,7 @@ class DemandaViewSet(viewsets.ModelViewSet):
 
         pessoas = list(Pessoa.objects.values('id', 'nome'))
 
-        genai.configure(api_key=settings.GEMINI_API_KEY)
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        client = google_genai.Client(api_key=settings.GEMINI_API_KEY)
 
         user_msg = f"""Extraia as informações do texto abaixo e retorne um JSON com estes campos:
 - titulo: string descritiva da tarefa
@@ -72,7 +71,10 @@ Retorne APENAS o JSON, sem markdown ou explicações.
 
 Texto: {texto}"""
 
-        resposta = model.generate_content(user_msg)
+        resposta = client.models.generate_content(
+            model='gemini-2.0-flash',
+            contents=user_msg,
+        )
 
         try:
             texto_resposta = resposta.text.strip()
