@@ -19,10 +19,6 @@ function hoje() {
   return new Date().toISOString().slice(0, 10)
 }
 
-function estaVencida(d) {
-  return d.data && d.data < hoje() && d.status !== 'concluida'
-}
-
 const EMPTY_FORM = { titulo: '', categoria: 'suporte', status: 'aberta', data: hoje(), responsavel: '' }
 
 function inputClass() {
@@ -163,11 +159,6 @@ export default function DemandasPage() {
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-semibold text-slate-100 flex items-center gap-2">
           Demandas
-          {filtradas.filter(estaVencida).length > 0 && (
-            <span className="bg-red-500/20 text-red-400 text-xs font-medium px-2 py-0.5 rounded-full">
-              {filtradas.filter(estaVencida).length} vencida{filtradas.filter(estaVencida).length > 1 ? 's' : ''}
-            </span>
-          )}
         </h2>
         <div className="flex gap-2 items-center">
           <label className={`cursor-pointer bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm font-medium px-4 py-2 rounded-lg transition-colors ${importando ? 'opacity-50' : ''}`}>
@@ -292,7 +283,7 @@ export default function DemandasPage() {
               <tr><td colSpan={5} className="px-4 py-6 text-slate-500 text-center">Nenhuma demanda encontrada.</td></tr>
             )}
             {filtradas.map(d => (
-              <tr key={d.id} className={`border-b border-slate-700/50 last:border-0 hover:bg-slate-700/30 ${estaVencida(d) ? 'bg-red-500/10' : ''}`}>
+              <tr key={d.id} className="border-b border-slate-700/50 last:border-0 hover:bg-slate-700/30">
                 <td className="px-4 py-3 text-slate-200">{d.titulo}</td>
                 <td className="px-4 py-3">
                   <span className={`text-xs px-2 py-0.5 rounded-full ${CATEGORIA_COLOR[d.categoria]}`}>
