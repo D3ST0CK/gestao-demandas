@@ -3,7 +3,7 @@ services:
     name: gestao-demandas
     runtime: python
     buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput
-    startCommand: python manage.py migrate && gunicorn projeto.wsgi --log-file -
+    startCommand: python manage.py migrate && gunicorn projeto.wsgi --workers 2 --threads 4 --timeout 60 --log-file -
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.0

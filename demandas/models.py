@@ -45,6 +45,11 @@ class Demanda(models.Model):
 
     class Meta:
         ordering = ['-data', '-criada_em']
+        indexes = [
+            models.Index(fields=['status']),
+            models.Index(fields=['data']),
+            models.Index(fields=['categoria']),
+        ]
 
     def __str__(self):
         return self.titulo

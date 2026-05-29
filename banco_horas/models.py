@@ -14,6 +14,10 @@ class EntradaBancoHoras(models.Model):
 
     class Meta:
         ordering = ['-data']
+        indexes = [
+            models.Index(fields=['tipo']),
+            models.Index(fields=['data']),
+        ]
 
     def __str__(self):
         return f"{self.tipo} {self.horas}h — {self.data}"

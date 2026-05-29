@@ -13,7 +13,7 @@ from .serializers import DemandaSerializer, SetorSerializer, PessoaSerializer
 
 
 class SetorViewSet(viewsets.ModelViewSet):
-    queryset = Setor.objects.all()
+    queryset = Setor.objects.prefetch_related('pessoas')
     serializer_class = SetorSerializer
     http_method_names = ['get', 'post', 'patch', 'delete']
 
@@ -35,7 +35,7 @@ class DemandaViewSet(viewsets.ModelViewSet):
     http_method_names = ['get', 'post', 'patch', 'delete']
 
     def get_queryset(self):
-        qs = Demanda.objects.all()
+        qs = Demanda.objects.select_related('responsavel')
         ano = self.request.query_params.get('ano')
         mes = self.request.query_params.get('mes')
         dia = self.request.query_params.get('dia')
@@ -84,6 +84,8 @@ Texto: {texto}"""
                 if texto_resposta.startswith('json'):
                     texto_resposta = texto_resposta[4:]
             resultado = json.loads(texto_resposta)
+            resultado['status'] = STATUS_MAP.get(str(resultado.get('status', '')).lower().strip(), 'aberta')
+            resultado['categoria'] = CATEGORIA_MAP.get(str(resultado.get('categoria', '')).lower().strip(), 'suporte')
             return Response(resultado)
         except json.JSONDecodeError:
             return Response(

@@ -2,12 +2,11 @@ import csv
 import io
 from datetime import datetime, date, timedelta
 from decimal import Decimal
-from django.db.models import Count
+from django.db.models import Count, Q, Sum
 from rest_framework import viewsets
 from rest_framework.decorators import api_view, parser_classes
 from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
-from django.db.models import Sum
 from .models import EntradaBancoHoras
 from .serializers import EntradaBancoHorasSerializer
 from demandas.models import Demanda
@@ -61,61 +60,87 @@ def dashboard(request):
     if data_fim:
         demandas = demandas.filter(data__lte=data_fim)
 
-    total = demandas.count()
-    concluidas_count = demandas.filter(status='concluida').count()
-    taxa = round((concluidas_count / total * 100), 1) if total > 0 else 0
-    recentes = demandas[:5]
-
-    por_categoria = {}
+    # 1 query: totais por status + por categoria (Count condicional)
+    agg_kwargs = {
+        'total': Count('id'),
+        'abertas': Count('id', filter=Q(status='aberta')),
+        'andamento': Count('id', filter=Q(status='andamento')),
+        'concluidas': Count('id', filter=Q(status='concluida')),
+    }
     for cat, _ in Demanda.CATEGORIA_CHOICES:
-        por_categoria[cat] = demandas.filter(categoria=cat).count()
+        agg_kwargs[f'cat_{cat}'] = Count('id', filter=Q(categoria=cat))
+    stats = demandas.aggregate(**agg_kwargs)
 
-    creditos = EntradaBancoHoras.objects.filter(tipo='credito').aggregate(total=Sum('horas'))['total'] or Decimal('0')
-    debitos = EntradaBancoHoras.objects.filter(tipo='debito').aggregate(total=Sum('horas'))['total'] or Decimal('0')
+    total = stats['total']
+    concluidas_count = stats['concluidas']
+    taxa = round((concluidas_count / total * 100), 1) if total > 0 else 0
+    por_categoria = {cat: stats[f'cat_{cat}'] for cat, _ in Demanda.CATEGORIA_CHOICES}
 
-    # Demandas por dia — range filtrado ou últimos 30 dias
+    # 1 query: recentes já com o responsável (sem N+1 na serialização)
+    recentes = demandas.select_related('responsavel')[:5]
+
+    # 1 query: créditos e débitos do banco de horas
+    banco = EntradaBancoHoras.objects.aggregate(
+        creditos=Sum('horas', filter=Q(tipo='credito')),
+        debitos=Sum('horas', filter=Q(tipo='debito')),
+    )
+    creditos = banco['creditos'] or Decimal('0')
+    debitos = banco['debitos'] or Decimal('0')
+
+    # Range dos gráficos: filtrado ou últimos 30 dias
     inicio_grafico = data_inicio if data_inicio else (hoje - timedelta(days=29))
     fim_grafico = data_fim if data_fim else hoje
     num_dias = (fim_grafico - inicio_grafico).days + 1
 
-    por_dia_qs = {
-        str(e['data']): e['total']
-        for e in Demanda.objects.filter(data__gte=inicio_grafico, data__lte=fim_grafico)
+    # 1 query: contagem por dia cobrindo TODO o intervalo necessário
+    # (por_dia + as até 8 semanas de por_semana), depois agrupado em Python.
+    if data_inicio or data_fim:
+        serie_inicio, serie_fim = inicio_grafico, fim_grafico
+    else:
+        serie_inicio = min(inicio_grafico, hoje - timedelta(weeks=7, days=6))
+        serie_fim = max(fim_grafico, hoje)
+
+    contagem_por_dia = {
+        e['data']: e['total']
+        for e in Demanda.objects.filter(data__gte=serie_inicio, data__lte=serie_fim)
             .values('data').annotate(total=Count('id'))
     }
-    por_dia = [
-        {
-            'data': str(inicio_grafico + timedelta(days=i)),
-            'label': (inicio_grafico + timedelta(days=i)).strftime('%d/%m'),
-            'total': por_dia_qs.get(str(inicio_grafico + timedelta(days=i)), 0),
-        }
-        for i in range(num_dias)
-    ]
+
+    def soma_intervalo(ini, fim):
+        return sum(v for d, v in contagem_por_dia.items() if ini <= d <= fim)
+
+    por_dia = []
+    for i in range(num_dias):
+        d = inicio_grafico + timedelta(days=i)
+        por_dia.append({
+            'data': str(d),
+            'label': d.strftime('%d/%m'),
+            'total': contagem_por_dia.get(d, 0),
+        })
 
     # Demandas por semana — reativo ao filtro quando ativo, últimas 8 semanas quando livre
+    por_semana = []
     if data_inicio or data_fim:
-        por_semana = []
         cursor = inicio_grafico
         while cursor <= fim_grafico:
             fim_w = min(cursor + timedelta(days=6), fim_grafico)
             por_semana.append({
                 'label': cursor.strftime('%d/%m'),
-                'total': Demanda.objects.filter(data__gte=cursor, data__lte=fim_w).count(),
+                'total': soma_intervalo(cursor, fim_w),
             })
             cursor += timedelta(days=7)
     else:
-        por_semana = []
         for i in range(7, -1, -1):
             fim = hoje - timedelta(weeks=i)
             ini = fim - timedelta(days=6)
             por_semana.append({
                 'label': ini.strftime('%d/%m'),
-                'total': Demanda.objects.filter(data__gte=ini, data__lte=fim).count(),
+                'total': soma_intervalo(ini, fim),
             })
 
     return Response({
-        'demandas_abertas': demandas.filter(status='aberta').count(),
-        'em_andamento': demandas.filter(status='andamento').count(),
+        'demandas_abertas': stats['abertas'],
+        'em_andamento': stats['andamento'],
         'concluidas': concluidas_count,
         'total': total,
         'taxa_conclusao': taxa,
